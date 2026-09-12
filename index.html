@@ -24,6 +24,7 @@
   --ui:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif;
   --measure:34rem;
   --r:3px;
+  --fs-base:18px; --fs-scale:1;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -45,7 +46,7 @@
 html{-webkit-text-size-adjust:100%}
 body{
   margin:0; background:var(--paper); color:var(--ink);
-  font-family:var(--serif); font-size:18px; line-height:1.62;
+  font-family:var(--serif); font-size:calc(var(--fs-base) * var(--fs-scale)); line-height:1.62;
   font-feature-settings:"liga" 1,"onum" 1;
 }
 h1,h2,h3,h4{font-family:var(--display); font-weight:400; text-wrap:balance; margin:0}
@@ -77,6 +78,15 @@ select{
   width:2rem; height:2rem; display:grid; place-items:center; cursor:pointer; color:var(--muted);
 }
 .iconbtn:hover{color:var(--ink); border-color:var(--muted)}
+.zoom{display:flex; border:1px solid var(--line); border-radius:var(--r); overflow:hidden}
+.zoom button{
+  background:none; border:0; cursor:pointer; color:var(--muted);
+  width:1.9rem; height:2rem; display:grid; place-items:center; font-family:var(--ui); line-height:1;
+}
+.zoom button:first-child{font-size:.72rem}
+.zoom button:last-child{font-size:.95rem; border-left:1px solid var(--line)}
+.zoom button:hover:not(:disabled){color:var(--ink); background:var(--paper-2)}
+.zoom button:disabled{opacity:.35; cursor:default}
 
 /* ---------- camino de pasos ---------- */
 .path{border-bottom:1px solid var(--line); background:var(--paper); position:sticky; top:var(--topH,3rem); z-index:19}
@@ -182,7 +192,7 @@ details.entry .body{padding-bottom:1.4rem}
 footer{max-width:60rem; margin:0 auto; padding:2rem 16px 3rem; border-top:1px solid var(--line-soft)}
 footer p{font-family:var(--ui); font-size:.72rem; color:var(--muted); line-height:1.6; max-width:var(--measure)}
 @media (min-width:900px){
-  body{font-size:19px}
+  :root{--fs-base:19px}
   main{padding-block:3rem 6rem}
 }
 @media (prefers-reduced-motion:reduce){
@@ -201,6 +211,10 @@ footer p{font-family:var(--ui); font-size:.72rem; color:var(--muted); line-heigh
     <div class="ctl">
       <label for="sel-sem">Rosario</label>
       <select id="sel-sem"></select>
+    </div>
+    <div class="zoom" role="group" aria-label="Tamaño del texto">
+      <button id="btn-smaller" type="button" aria-label="Texto más pequeño">A</button>
+      <button id="btn-bigger" type="button" aria-label="Texto más grande">A</button>
     </div>
     <button class="iconbtn" id="btn-theme" type="button" aria-label="Cambiar entre claro y oscuro">◐</button>
   </div>
@@ -258,7 +272,7 @@ var PASOS = [
 var LS = 'desatanudos.v1';
 var S = load();
 function load(){
-  var base = {dia:1, sem:hoy(), paso:0, vista:'rezo', intencion:'', hechos:{}, tema:''};
+  var base = {dia:1, sem:hoy(), paso:0, vista:'rezo', intencion:'', hechos:{}, tema:'', zoom:1};
   try{ var raw = localStorage.getItem(LS); if(raw) Object.assign(base, JSON.parse(raw)); }catch(e){}
   base.sem = hoy();
   return base;
@@ -302,6 +316,18 @@ SEMANA.forEach(function(d, i){ var o = el('option', null, d.n); o.value = i; sel
 selDia.value = S.dia; selSem.value = S.sem;
 selDia.addEventListener('change', function(){ S.dia = +this.value; S.paso = 0; save(); render(); window.scrollTo(0,0); });
 selSem.addEventListener('change', function(){ S.sem = +this.value; save(); render(); });
+
+// ---------- tamano de letra ----------
+var ESCALAS = [0.88, 1, 1.15, 1.32, 1.55];
+function aplicaZoom(){
+  if(S.zoom == null || S.zoom < 0 || S.zoom >= ESCALAS.length) S.zoom = 1;
+  document.documentElement.style.setProperty('--fs-scale', ESCALAS[S.zoom]);
+  document.getElementById('btn-smaller').disabled = S.zoom === 0;
+  document.getElementById('btn-bigger').disabled = S.zoom === ESCALAS.length - 1;
+}
+document.getElementById('btn-smaller').addEventListener('click', function(){ if(S.zoom > 0){ S.zoom--; aplicaZoom(); save(); ajustaPath(); } });
+document.getElementById('btn-bigger').addEventListener('click', function(){ if(S.zoom < ESCALAS.length-1){ S.zoom++; aplicaZoom(); save(); ajustaPath(); } });
+aplicaZoom();
 
 var btnTheme = document.getElementById('btn-theme');
 if(S.tema) document.documentElement.setAttribute('data-theme', S.tema);
@@ -569,11 +595,12 @@ function render(){
     'gozo (lunes y sábado), luz (jueves), dolor (martes y viernes), gloria (miércoles y domingo). ' +
     'El día de la novena y el de la semana se eligen arriba; lo marcado se guarda en este navegador.';
 }
-render();
-addEventListener('resize', function(){
+function ajustaPath(){
   document.querySelector('.path').style.top = document.querySelector('.top').offsetHeight + 'px';
-});
-document.querySelector('.path').style.top = document.querySelector('.top').offsetHeight + 'px';
+}
+render();
+addEventListener('resize', ajustaPath);
+ajustaPath();
 })();
 
 </script>
